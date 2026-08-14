@@ -1,22 +1,9 @@
 {
   "name": "ortho32-ai-gateway",
   "version": "0.1.0",
-  "description": "Model-agnostic inference layer — private Bedrock. Applications call gateway, never providers directly.",
-  "main": "dist/index.js",
+  "description": "Compact ORTHO AI Gateway core in M/MUMPS routines.",
   "type": "commonjs",
   "scripts": {
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "dev": "tsc -w",
-    "test": "vitest run"
-  },
-  "dependencies": {
-    "fastify": "^4.28.1",
-    "zod": "^3.23.8"
-  },
-  "devDependencies": {
-    "typescript": "^5.5.4",
-    "@types/node": "^20.14.12",
-    "vitest": "^1.6.0"
+    "test": "node tests/verify-collapse.mjs"
   }
 }

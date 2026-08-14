@@ -1,0 +1,10 @@
+ORTVAULT ; Credential service boundary
+ ;
+KEY(PROVIDER) ;
+ IF PROVIDER="openai" QUIT $ZTRNLNM("OPENAI_API_KEY")
+ IF PROVIDER="anthropic" QUIT $ZTRNLNM("ANTHROPIC_API_KEY")
+ QUIT ""
+ ;
+HAS(PROVIDER) ;
+ QUIT $$KEY(PROVIDER)'=""
+
