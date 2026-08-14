@@ -1,0 +1,5 @@
+# Tell GitHub Linguist what language this repo is
+*.m linguist-language=MUMPS
+*.mjs linguist-language=JavaScript
+*.ts linguist-detectable=false
+tests/verify-collapse.mjs linguist-detectable=true
