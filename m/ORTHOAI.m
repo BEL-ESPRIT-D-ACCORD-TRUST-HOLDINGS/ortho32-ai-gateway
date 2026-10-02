@@ -3,7 +3,18 @@ ORTHOAI ; ORTHO AI gateway entry points
 INIT ;
  DO INIT^ORTROUTE
  DO INIT^ORTHEALTH
- QUIT 1
+ QUIT
+ ;
+SERVE ; Handle one request from the environment (set by bin/ortho-ai-conn.sh), events on stdout
+ NEW ID,MODEL,PROMPT,OK
+ USE $PRINCIPAL:(NOWRAP:WIDTH=1048575)
+ SET ID=$ZTRNLNM("ORTHO_REQ_ID")
+ SET MODEL=$ZTRNLNM("ORTHO_MODEL")
+ SET PROMPT=$ZTRNLNM("ORTHO_PROMPT")
+ IF ID'?1.64(1AN,1"-",1"_") DO ERR^ORTIPC("","invalid request id") QUIT
+ SET OK=$$REQ(ID,MODEL,PROMPT)
+ IF '$GET(^ORTHO("REQ",ID,"DONE")) DO ERR^ORTIPC(ID,"request ended without a terminal event")
+ QUIT
  ;
 REQ(ID,MODEL,PROMPT) ;
  NEW OK,PROVIDER,ERR

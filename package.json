@@ -4,6 +4,7 @@
   "description": "Compact ORTHO AI Gateway core in M/MUMPS routines.",
   "type": "commonjs",
   "scripts": {
-    "test": "node tests/verify-collapse.mjs"
+    "test": "node tests/verify-collapse.mjs",
+    "test:e2e": "sh tests/e2e.sh"
   }
 }
