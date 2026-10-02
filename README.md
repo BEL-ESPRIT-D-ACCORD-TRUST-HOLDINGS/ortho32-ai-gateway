@@ -52,9 +52,31 @@ ANTHROPIC_API_KEY
 
 If a required key is absent, the request transitions to `FAILED`. The gateway does not emit canned model output.
 
+## Running as a service (ORTHOHost IPC)
+
+`bin/ortho-ai-serve.sh` starts the listener ORTHOHost's `InferenceService` connects to. .NET maps
+`NamedPipeClientStream(".", "ortho-ai")` to the Unix socket `/tmp/CoreFxPipe_ortho-ai`
+(override with `ORTHO_AI_SOCKET`). It creates the database on first start (`ORTHO_DATA`, default
+`/var/lib/ortho32-ai`), initialises the model catalog once, then runs `socat`, which forks
+`bin/ortho-ai-conn.sh` per connection.
+
+```text
+host MessageEnvelope line  ->  jq (id, model, prompt)  ->  environment  ->  SERVE^ORTHOAI
+                                                                               |
+InferenceEvent lines  <-  ORTIPC  <-  ORTSTREAM  <-  ORTPROV (curl, 0600 config + body files)
+```
+
+- Input: one host `MessageEnvelope` JSON line; `Payload.model` (alias or `provider:model`) and `Payload.prompt`.
+- Output: `InferenceEvent` lines (`CorrelationId`, `Chunk`, `Done`, `Model`, `Tokens`, optional `Error`) ending in `Done: true`.
+- The reply text is the provider's message text (`choices[0].message.content` / `content[0].text`), or the whole response body if those fields are absent.
+- Requires `YottaDB`, `socat`, `jq`, `curl`; keys in `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`.
+- `ORTHO_OPENAI_URL` / `ORTHO_ANTHROPIC_URL` override the provider endpoints (used by the tests and for internal proxies).
+- Prompts are limited to 120000 bytes (a single environment string is capped at 128 KiB).
+- Provider data never reaches a shell command line: the body and credential header go through 0600 files, and request ids are validated (`[A-Za-z0-9_-]{1,64}`).
+
 ## Example M Invocation
 
-With YottaDB or GT.M available and `m/` on the routine path:
+With YottaDB available, the global directory configured (record size >= 1048576 for large prompts, see `bin/ortho-ai-serve.sh`), and `m/` on the routine path:
 
 ```mumps
 DO INIT^ORTHOAI
@@ -62,34 +84,32 @@ SET OK=$$REQ^ORTHOAI("REQ-1","coding.default","Say HELLO exactly.")
 WRITE "STATE=", $$STATE^ORTHOAI("REQ-1"), !
 ```
 
-Expected observable path:
+`REQ` writes the `InferenceEvent` lines to the current output as it goes.
 
-```text
-REQUEST ID
--> ROUTE
--> PROVIDER
--> STREAM SEQUENCE
--> TERMINAL STATE
-```
+Calling convention: labels that return a value (`REQ`, `RESOLVE`, `CHECK`, `CALL`, `KEY`, ...) are called with `$$`;
+labels that do not (`INIT`, `EVENT`, `SEND`, `RECORD`, `TOKEN`, `FAIL`, `SERVE`) are called with `DO`.
 
 ## Verification
 
-This checkout includes a static collapse gate:
-
 ```bash
-npm test
+npm test          # static collapse gate (no YottaDB needed)
+npm run test:e2e  # needs YottaDB ($ydb_dist), socat, jq, curl, node
 ```
 
-The gate verifies:
+The static gate verifies:
 
 - no TypeScript gateway core remains under `src/`
 - exactly 8 core M routines exist
 - required executable labels exist
 - required `^ORTHO(...)` global subtrees are used
-- provider dispatch reaches real HTTP transports instead of fake echoes
+- provider dispatch uses `curl` against the real provider URLs
+- `$ZF(-1,...)` is not used (it silently does nothing on YottaDB r2.06; use `ZSYSTEM`)
 
-Full runtime execution requires YottaDB or GT.M on the host, plus a real provider key.
-
+The end-to-end test runs the real chain (socat, bridge, YottaDB, curl, jq) against a local mock of the
+provider APIs and checks: exact round-trip of quotes, backslashes, newlines, tabs, control characters and
+UTF-8; a 100000-byte prompt; auth headers; shell-injection attempts; terminal error events for an unknown
+model, a missing key and malformed input; temp-file cleanup; and that keys never reach the logs.
+It does not call the real OpenAI or Anthropic APIs.
 
 ---
 

@@ -41,8 +41,15 @@ for (const global of ['"MODEL"', '"ROUTE"', '"HEALTH"', '"REQ"', '"USAGE"', '"EV
 if (joined.includes("[anthropic]") || joined.includes("[openai]") || joined.includes("fake")) {
   fail("canned provider output remains in core routines");
 }
-if (!joined.includes("curl -sS -f https://api.openai.com") || !joined.includes("curl -sS -f https://api.anthropic.com")) {
+if (
+  !joined.includes('"curl -sS -f "') ||
+  !joined.includes("https://api.openai.com/v1/chat/completions") ||
+  !joined.includes("https://api.anthropic.com/v1/messages")
+) {
   fail("provider dispatch does not reach real provider transports");
+}
+if (joined.includes("$ZF(-1")) {
+  fail("$ZF(-1,...) is a silent no-op on YottaDB r2.06 (provider calls would never run); use ZSYSTEM");
 }
 
 console.log("REQUEST ID: VERIFY-STATIC");
